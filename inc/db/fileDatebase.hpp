@@ -76,12 +76,27 @@ public:
 
     bool activity_set_ADMIN(std::string& arg_input, std::string& arg_back) {
         fileHandler_activity.setFilename_(activity_PATH);
-        fileHandler_activity.activity_set(arg_input, arg_back);
+        return fileHandler_activity.activity_set(arg_input, arg_back);
     }
 
     bool activity_query_USER(std::string& arg_input, std::string& arg_back) {
         fileHandler_activity.setFilename_(activity_PATH);
-        fileHandler_activity.activity_query(arg_input, arg_back);
+        return fileHandler_activity.activity_query(arg_input, arg_back);
+    }
+
+    bool username_password_delete_ADMIN(std::string& name) {
+        fileHandler_credentials.setFilename(credentials_PATH);
+        return fileHandler_credentials.RemoveCredentials(name);
+    }
+
+    bool username_password_reset_ADMIN(std::string& name) {
+        fileHandler_credentials.setFilename(credentials_PATH);
+        return fileHandler_credentials.ResetPassword(name, "123");
+    }
+
+    bool seats_fixed_unbind_ADMIN(std::string& name, std::string& seats) {
+        fileHandler_seats.seatFileHandler_seatFixed(seat_fixed_PATH);
+        return fileHandler_seats.Resetseats(name, seats);
     }
 };
 

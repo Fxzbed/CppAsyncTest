@@ -1,2 +1,0 @@
-/root/CodeWSL/CppAsyncTest/build/CMakeFiles/edit_cache.dir
-/root/CodeWSL/CppAsyncTest/build/CMakeFiles/rebuild_cache.dir

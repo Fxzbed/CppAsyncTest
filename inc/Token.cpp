@@ -44,9 +44,7 @@ public:
         }
     }
 
-    void setToken(const std::string token) {
-        currentToken = std::move(token);
-    }
+
 
 private:
     std::string currentToken;

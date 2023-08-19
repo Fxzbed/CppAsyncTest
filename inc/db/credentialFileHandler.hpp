@@ -69,5 +69,83 @@ class CredentialFileHandler : public fileBase {
             }
 
         }
+
+        bool RemoveCredentials(const std::string& usernameToRemove) {
+            this->OpenFileForWriting();
+            if (IsOpen()) {
+                std::string tempFilename = filename + ".tmp";
+                std::ofstream tempFile(tempFilename);
+
+                if (!tempFile.is_open()) {
+                    std::cerr << "Error opening temp file for writing." << std::endl;
+                    return false;
+                }
+
+                std::string line;
+                while (getline(fileStream, line)) {
+                    line = XORDecrypt(line);
+                    size_t commaPos = line.find(',');
+                    if (commaPos != std::string::npos) {
+                        std::string storedUsername = line.substr(0, commaPos);
+                        if (storedUsername != usernameToRemove) {
+                            tempFile << XOREncrypt(line) << '\n';
+                        }
+                    }
+                }
+
+                tempFile.close();
+                fileStream.close();
+
+                remove(filename.c_str());
+                rename(tempFilename.c_str(), filename.c_str());
+
+                OpenFileForReading();
+
+                return true;
+            }
+            return false;
+        }
+
+        bool ResetPassword(const std::string& usernameToReset, const std::string& newPassword) {
+            this->OpenFileForWriting();
+            if (IsOpen()) {
+                std::string tempFilename = filename + ".tmp";
+                std::ofstream tempFile(tempFilename);
+
+                if (!tempFile.is_open()) {
+                    std::cerr << "Error opening temp file for writing." << std::endl;
+                    return false;
+                }
+
+                std::string line;
+                while (getline(fileStream, line)) {
+                    line = XORDecrypt(line);
+                    size_t commaPos = line.find(',');
+                    if (commaPos != std::string::npos) {
+                        std::string storedUsername = line.substr(0, commaPos);
+                        std::string storedPassword = line.substr(commaPos + 1, line.size());
+                        size_t commaPos = storedPassword.find(',');
+                        if (storedUsername == usernameToReset) {
+                            tempFile << XOREncrypt(usernameToReset + ',' + newPassword + storedPassword.substr(commaPos, storedPassword.size())) << '\n';
+                        } else {
+                            tempFile << XOREncrypt(line) << '\n';
+                        }
+                    }
+                }
+
+                tempFile.close();
+                fileStream.close();
+
+                // 删除原文件并重命名临时文件
+                remove(filename.c_str());
+                rename(tempFilename.c_str(), filename.c_str());
+
+                // 重新打开文件
+                OpenFileForReading();
+
+                return true;
+            }
+            return false;
+        }
 };
 #endif CREDENTIALFILEHANDLER_HPP_
