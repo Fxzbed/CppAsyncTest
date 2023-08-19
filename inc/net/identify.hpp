@@ -16,6 +16,54 @@ struct header_identify {
     std::string token;
 };
 
+class Socket {
+public:
+    Socket(const std::string& serverIP, int port) {
+        sockfd = socket(AF_INET, SOCK_STREAM, 0);
+        if (sockfd == -1) {
+            std::cerr << "Error creating socket." << std::endl;
+            return;
+        }
+
+        serverAddr.sin_family = AF_INET;
+        serverAddr.sin_port = htons(port);
+        serverAddr.sin_addr.s_addr = inet_addr(serverIP.c_str());
+
+        if (connect(sockfd, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
+            std::cerr << "Error connecting to server." << std::endl;
+            close(sockfd);
+            return;
+        }
+    }
+
+    ~Socket() {
+        close(sockfd);
+    }
+
+    std::string receiveData(int bufferSize = 1024) {
+        char buffer[bufferSize];
+        memset(buffer, 0, bufferSize);
+        int bytesRead = recv(sockfd, buffer, bufferSize - 1, 0);
+        if (bytesRead == -1) {
+            std::cerr << "Error receiving data." << std::endl;
+            return "";
+        }
+        return std::string(buffer, bytesRead);
+    }
+
+    bool sendData(const std::string& data) {
+        if (send(sockfd, data.c_str(), data.size(), 0) == -1) {
+            std::cerr << "Error sending data." << std::endl;
+            return false;
+        }
+        return true;
+    }
+
+private:
+    int sockfd;
+    struct sockaddr_in serverAddr;
+};
+
 class ServerSocket_identify {
 public:
     ServerSocket_identify(int port = 8080) {
@@ -78,6 +126,22 @@ public:
         return false;
     }
 
+    bool openLocker(std::string data) {
+        uint16_t magic_locker = 514;
+        uint16_t size_locker = head.size;
+        uint8_t type = 1;
+        this->generateToken();
+        std::string respond;
+        respond = respond.append(reinterpret_cast<const char *>(magic_locker), sizeof(uint16_t));
+        respond = respond.append(reinterpret_cast<const char *>(size_locker), sizeof(uint16_t));
+        respond = respond.append(reinterpret_cast<const char *>(type), sizeof(uint8_t));
+        respond += head.token;
+        Socket clientSocket("127.0.0.1", 7777);
+        clientSocket.sendData(respond);
+        respond = clientSocket.receiveData(22);
+        return *reinterpret_cast<const bool *>((respond.substr(21, 22)).c_str());
+    }
+
     void socketServerRun() {
         ServerSocket_identify serverSocket(8080);
 
@@ -91,15 +155,21 @@ public:
                 bool isSuccess = false;
                 std::string respond;
                 respond = respond.append(reinterpret_cast<const char *>(head.magic), sizeof(uint16_t));
-                head.size = 1;
                 if (head.type == 3) {
+                    head.size = 1;
                     respond = respond.append(reinterpret_cast<const char *>(head.size), sizeof(uint16_t));
                     respond = respond.append(reinterpret_cast<const char *>(++head.type), sizeof(uint8_t));
                     this->generateToken();
                     respond = respond.append(head.token);
                 } else if (head.type == 1) {
+                    isSuccess = openLocker(receivedData.substr(21, receivedData.size()));
+                    head.size = 1;
                     respond = respond.append(reinterpret_cast<const char *>(head.size), sizeof(uint16_t));
-                    respond = respond.append(reinterpret_cast<const char *>(++head.type), sizeof(uint8_t));
+                    if (isSuccess) 
+                        head.type = 2;
+                    else 
+                        head.type = 4;
+                    respond = respond.append(reinterpret_cast<const char *>(head.type), sizeof(uint8_t));
                     this->generateToken();
                     respond = respond.append(head.token);
                 }
